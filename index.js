@@ -118,14 +118,13 @@ app.get('/code', async (req, res) => {
                         });
 
                         let GIFT_MD_TEXT = `
+╔════════════════════
+║ *◇SESSION CONNECTED◇*
+║ ◇Bot: GIFT MD
+║ ◇Dev: Isaac Favour
+╚════════════════════
 ╔════════════════════◇
-║ SESSION CONNECTED ✅
-║ GIFT MD BOT
-║ By Isaac Favour
-╚════════════════════╝
-
-╔════════════════════◇
-║ SETUP INSTRUCTIONS:
+║ *◇SETUP INSTRUCTIONS◇*
 ║ 
 ║ 1. Copy the session ID above
 ║ 2. Go to your deployment platform
@@ -133,15 +132,13 @@ app.get('/code', async (req, res) => {
 ║    SESSION_ID = <paste session>
 ║ 4. Deploy your bot
 ╚════════════════════╝
-
 ╔════════════════════◇
-║ SUPPORT & LINKS:
+║ *◇SUPPORT & LINKS◇*
 ║ 
-║ 📺 YouTube: @officialGift-md
-║ 📱 Owner: +2348085046874
-║ 🔗 Repo: github.com/isaacfont461461-cmd
+║ 📱 Owner: +2348154853640
+║ 🔗 Repo: https://github.com/eminentboy11/GIFT-MD
 ║ 💬 WhatsApp Channel: 
-║    whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A
+║    https://whatsapp.com/channel/0029VbBT5JR3LdQMA5ckyE3e
 ╚════════════════════╝
 
 ⚠️ Keep your session ID private!
