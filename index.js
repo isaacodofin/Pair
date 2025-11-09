@@ -1,3 +1,4 @@
+import cors from 'cors';
 import express from 'express';
 import fs from 'fs';
 import pino from 'pino';
@@ -18,7 +19,11 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+app.use(cors({
+  origin: ['https://gift-al5t.onrender.com', 'http://localhost:8000'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 // Serve static files
 app.use(express.static('public'));
 
