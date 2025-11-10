@@ -1,201 +1,102 @@
-import cors from 'cors';
 import express from 'express';
+import cors from 'cors';
 import fs from 'fs';
 import pino from 'pino';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import awesomePhoneNumber from 'awesome-phonenumber';
-import makeWASocket, {
-    useMultiFileAuthState,
-    DisconnectReason,
-    makeCacheableSignalKeyStore,
-    Browsers,
-    delay,
-    fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { makeWASocket, useMultiFileAuthState, Browsers, delay } from '@whiskeysockets/baileys';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// CORS configuration
 app.use(cors({
-  origin: ['https://gift-al5t.onrender.com', 'http://localhost:8000'],
+  origin: ['https://gift-al5t.onrender.com', 'http://localhost:8000', '*'],
   methods: ['GET', 'POST'],
   credentials: true
 }));
-// Serve static files
+
+app.use(express.json());
 app.use(express.static('public'));
 
-// Utility functions
-function makeid(length = 10) {
-    let result = '';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
-}
+// Serve your HTML page
+app.get('/', (req, res) => {
+  res.sendFile('index.html', { root: './public' });
+});
 
-function removeFile(filePath) {
-    if (!fs.existsSync(filePath)) return false;
-    fs.rmSync(filePath, { recursive: true, force: true });
-}
-
-// Main pairing endpoint
+// Pairing code endpoint
 app.get('/code', async (req, res) => {
-    const id = makeid();
-    let num = req.query.number;
+  const { number } = req.query;
+  
+  if (!number) {
+    return res.status(400).json({ 
+      error: 'Phone number required',
+      code: 'Service Unavailable'
+    });
+  }
 
-    if (!num) {
-        return res.status(400).json({ code: 'Phone number is required' });
+  let sock = null;
+  
+  try {
+    // Load auth state
+    const { state, saveCreds } = await useMultiFileAuthState('./auth');
+    
+    // Create fresh connection for this request ONLY
+    sock = makeWASocket({
+      auth: state,
+      printQRInTerminal: false,
+      logger: pino({ level: "silent" }),
+      browser: Browsers.ubuntu("Chrome"),
+    });
+
+    // Listen for credential updates
+    sock.ev.on('creds.update', saveCreds);
+
+    // Request pairing code
+    const code = await sock.requestPairingCode(number);
+    
+    // ✅ CRITICAL: Close connection immediately after getting code
+    await delay(2000); // Small delay to ensure code is sent
+    await sock.end();
+    sock = null;
+    
+    console.log(`✅ Pairing code generated for ${number}: ${code}`);
+    
+    res.json({ 
+      code,
+      status: 'success'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error generating pairing code:', error.message);
+    
+    // Always cleanup on error
+    if (sock) {
+      try {
+        await sock.end();
+      } catch (e) {
+        console.error('Error closing socket:', e.message);
+      }
+      sock = null;
     }
-
-    async function GIFT_MD_PAIR_CODE() {
-        const { state, saveCreds } = await useMultiFileAuthState('./temp/' + id);
-        
-        try {
-            // ✅ FIX: Fetch latest Baileys version
-            const { version } = await fetchLatestBaileysVersion();
-            
-            let sock = makeWASocket({
-                version, // ✅ ADD THIS
-                auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }).child({ level: 'silent' })),
-                },
-                printQRInTerminal: false,
-                logger: pino({ level: 'silent' }).child({ level: 'silent' }),
-                browser: Browsers.macOS('Chrome'),
-                // ✅ ADD THESE OPTIONS
-                getMessage: async (key) => {
-                    return { conversation: 'GIFT MD' };
-                }
-            });
-
-            if (!sock.authState.creds.registered) {
-                await delay(1500);
-                num = num.replace(/[^0-9]/g, '');
-                
-                // Validate phone number
-                const pn = awesomePhoneNumber('+' + num);
-                if (!pn.isValid()) {
-                    await removeFile('./temp/' + id);
-                    return res.status(400).json({ code: 'Invalid phone number' });
-                }
-
-                try {
-                    const code = await sock.requestPairingCode(num);
-                    
-                    if (!res.headersSent) {
-                        await res.send({ code });
-                    }
-                } catch (pairError) {
-                    console.error('Pairing error:', pairError);
-                    await removeFile('./temp/' + id);
-                    if (!res.headersSent) {
-                        return res.status(500).json({ 
-                            code: 'Failed to generate code. Try again.' 
-                        });
-                    }
-                }
-            }
-
-            sock.ev.on('creds.update', saveCreds);
-            
-            sock.ev.on('connection.update', async (s) => {
-                const { connection, lastDisconnect } = s;
-                
-                if (connection === 'open') {
-                    await delay(5000);
-                    
-                    try {
-                        // Read session file
-                        let data = fs.readFileSync(__dirname + `/temp/${id}/creds.json`);
-                        await delay(800);
-                        
-                        // Convert to base64
-                        let b64data = Buffer.from(data).toString('base64');
-                        
-                        // Send session to user
-                        let session = await sock.sendMessage(sock.user.id, { 
-                            text: 'GIFT-MD~' + b64data 
-                        });
-
-                        let GIFT_MD_TEXT = `
-╔════════════════════
-║ *◇SESSION CONNECTED◇*
-║ ◇Bot: GIFT MD
-║ ◇Dev: Isaac Favour
-║ ◇User: sock.user.id  
-╚════════════════════
-╔════════════════════◇
-║ *◇SETUP INSTRUCTIONS◇*
-║ 
-║ 1. Copy the session ID above
-║ 2. Go to your deployment platform
-║ 3. Set .env:
-║    SESSION_ID = <paste session>
-║ 4. Deploy your bot
-╚════════════════════╝
-╔════════════════════◇
-║ *◇SUPPORT & LINKS◇*
-║ 
-║ 📱 Owner: +2348154853640
-║ 🔗 Repo: https://github.com/eminentboy11/GIFT-MD
-║ 💬 WhatsApp Channel: 
-║    https://whatsapp.com/channel/0029VbBT5JR3LdQMA5ckyE3e
-╚════════════════════╝
-
-⚠️ Keep your session ID private!
-🎉 Enjoy GIFT MD!
-`;
-
-                        await sock.sendMessage(sock.user.id, { text: GIFT_MD_TEXT }, { quoted: session });
-
-                        await delay(100);
-                        await sock.ws.close();
-                    } catch (sessionError) {
-                        console.error('Session error:', sessionError);
-             sock.ws.close();       } finally {
-                        await removeFile('./temp/' + id);
-                    }
-                    
-                } else if (connection === 'close' && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
-                    await delay(10000);
-                    GIFT_MD_PAIR_CODE();
-                }
-            });
-            
-        } catch (err) {
-            console.error('Service error:', err);
-            await removeFile('./temp/' + id);
-            if (!res.headersSent) {
-                await res.status(500).json({ 
-                    code: 'Service Currently Unavailable' 
-                });
-            }
-        }
-    }
-
-    return await GIFT_MD_PAIR_CODE();
+    
+    res.status(500).json({ 
+      error: error.message,
+      code: 'Service Unavailable'
+    });
+  }
 });
 
-// Health check
+// Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({ status: 'online', timestamp: new Date().toISOString() });
+  res.json({ status: 'online', timestamp: new Date().toISOString() });
 });
 
-// Start server
 app.listen(PORT, () => {
-    console.log(`
-╔════════════════════════════════╗
-║   GIFT MD PAIRING API          ║
-║   Status: ONLINE ✅            ║
-║   Port: ${PORT}                    ║
-╚════════════════════════════════╝
-
-📡 API Endpoint: http://localhost:${PORT}/code?number=...
-🌐 Web Interface: http://localhost:${PORT}
-    `);
+  console.log('\n╔════════════════════════════════╗');
+  console.log('║   GIFT MD PAIRING API          ║');
+  console.log('║   Status: ONLINE ✅            ║');
+  console.log(`║   Port: ${PORT}                    ║`);
+  console.log('╚════════════════════════════════╝\n');
+  console.log(`📡 API Endpoint: http://localhost:${PORT}/code?number=...`);
+  console.log(`🌐 Web Interface: http://localhost:${PORT}`);
+  console.log('    ');
 });
