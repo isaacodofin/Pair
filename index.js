@@ -127,13 +127,14 @@ app.get('/code', async (req, res) => {
 ║ *◇SESSION CONNECTED◇*
 ║ ◇Bot: GIFT MD
 ║ ◇Dev: Isaac Favour
+║ ◇User: sock.user.id  
 ╚════════════════════
 ╔════════════════════◇
 ║ *◇SETUP INSTRUCTIONS◇*
 ║ 
 ║ 1. Copy the session ID above
 ║ 2. Go to your deployment platform
-║ 3. Set environment variable:
+║ 3. Set .env:
 ║    SESSION_ID = <paste session>
 ║ 4. Deploy your bot
 ╚════════════════════╝
@@ -156,7 +157,7 @@ app.get('/code', async (req, res) => {
                         await sock.ws.close();
                     } catch (sessionError) {
                         console.error('Session error:', sessionError);
-                    } finally {
+             sock.ws.close();       } finally {
                         await removeFile('./temp/' + id);
                     }
                     
