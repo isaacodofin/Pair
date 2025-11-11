@@ -21,7 +21,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // CORS configuration
 app.use(cors({
-  origin: ['https://gift-al5t.onrender.com', 'http://localhost:8000', '*'],
+  origin: ['https://quintessential-tiphany-eminentbo-9faaa168.koyeb.app/', 'http://localhost:8000', '*'],
   methods: ['GET', 'POST'],
   credentials: true
 }));
