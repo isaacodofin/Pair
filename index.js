@@ -119,7 +119,7 @@ app.get('/code', async (req, res) => {
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: Browsers.ubuntu('Chrome'),
+                browser: ["Android", "Edge", "142.0.3595.66"],
                 getMessage: async (key) => {
                     return { conversation: 'GIFT MD' };
                 }
