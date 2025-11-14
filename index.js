@@ -114,12 +114,12 @@ app.get('/code', async (req, res) => {
             let sock = makeWASocket({
                 version,
                 auth: {
-                    creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
-                },
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+        },
                 printQRInTerminal: false,
                 logger: pino({ level: 'silent' }),
-                browser: ["Android", "Edge", "142.0.3595.66"],
+                browser: ["Ubuntu", "Chrome", "20.0.04"],
                 getMessage: async (key) => {
                     return { conversation: 'GIFT MD' };
                 }
