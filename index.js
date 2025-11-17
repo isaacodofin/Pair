@@ -142,7 +142,7 @@ app.get('/code', async (req, res) => {
                 if (!res.headersSent) {
                     // ✅ SEND RESPONSE IMMEDIATELY WITH success FLAG
                     res.json({
-                        bot: GIFT-MD,
+                        bot: "GIFT-MD",
                         success: true,
                         code: code 
                     });
