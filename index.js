@@ -11,7 +11,6 @@ import makeWASocket, {
     makeCacheableSignalKeyStore,
     Browsers,
     delay,
-    proto,
     fetchLatestBaileysVersion
 } from '@whiskeysockets/baileys';
 
@@ -109,7 +108,9 @@ app.get('/code', async (req, res) => {
 
             const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
             const { version } = await fetchLatestBaileysVersion();
+
             console.log(`🔌 Creating socket for session: ${id}`);
+
             let sock = makeWASocket({
                 version,
                 auth: {
@@ -123,35 +124,37 @@ app.get('/code', async (req, res) => {
                     return { conversation: 'GIFT MD' };
                 }
             });
+
             // ✅ FIX 8: Request pairing code and respond immediately
             if (!sock.authState.creds.registered) {
                 await delay(1500);
+
                 try {
                     console.log(`🔐 Requesting pairing code for: ${num}`);
                     const code = await sock.requestPairingCode(num);
-        
-                console.log(`✅ Pairing code generated: ${code}`);
-                
-                if (!res.headersSent) {
-                    // ✅ SEND RESPONSE IMMEDIATELY WITH success FLAG
-                    res.json({
-                        bot: "GIFT-MD",
-                        success: true,
-                        code: code 
-                    });
-                }
-            } catch (pairError) {
-                console.error('❌ Pairing error:', pairError.message);
-                await removeFile(sessionPath);
-                
-                if (!res.headersSent) {
-                    return res.status(500).json({
-                        success: false,
-                        code: 'Failed to generate code. Number may be invalid or already paired.'
-                    });
+
+                    console.log(`✅ Pairing code generated: ${code}`);
+                    
+                    if (!res.headersSent) {
+                        // ✅ SEND RESPONSE IMMEDIATELY WITH success FLAG
+                        return res.json({ 
+                            success: true,
+                            code: code 
+                        });
+                    }
+                } catch (pairError) {
+                    console.error('❌ Pairing error:', pairError.message);
+                    await removeFile(sessionPath);
+                    
+                    if (!res.headersSent) {
+                        return res.status(500).json({
+                            success: false,
+                            code: 'Failed to generate code. Number may be invalid or already paired.'
+                        });
+                    }
                 }
             }
-        }
+
             sock.ev.on('creds.update', saveCreds);
 
             sock.ev.on('connection.update', async (s) => {
@@ -211,7 +214,7 @@ app.get('/code', async (req, res) => {
 
                         console.log(`📤 Session sent to: ${num}`);
 
-                        await delay(2000);
+                        await delay(100);
                         await sock.ws.close();
                     } catch (sessionError) {
                         console.error('❌ Session error:', sessionError.message);
