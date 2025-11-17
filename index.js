@@ -21,13 +21,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ FIX 1: ENABLE CORS FOR ALL ORIGINS
-app.use(cors());
+// ✅ Track completed sessions to prevent duplicate sends
+const completedSessions = new Set();
 
-// ✅ FIX 2: Handle preflight requests
+// ✅ CORS Configuration
+app.use(cors());
 app.options('*', cors());
 
-// ✅ FIX 3: Add custom CORS headers
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -36,14 +36,12 @@ app.use((req, res, next) => {
     next();
 });
 
-// ✅ FIX 4: Add JSON parsing middleware
+// ✅ Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Serve static files
 app.use(express.static('public'));
 
-// ✅ FIX 5: Ensure temp directory exists
+// ✅ Ensure temp directory exists
 const tempDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
@@ -72,7 +70,7 @@ function removeFile(filePath) {
     }
 }
 
-// ✅ FIX 6: Main pairing endpoint with better error handling
+// ✅ MAIN PAIRING ENDPOINT
 app.get('/code', async (req, res) => {
     const id = makeid();
     let num = req.query.number;
@@ -86,7 +84,7 @@ app.get('/code', async (req, res) => {
         });
     }
 
-    // ✅ FIX 7: Clean and validate number early
+    // Clean and validate number
     num = num.replace(/[^0-9]/g, '');
     
     const pn = awesomePhoneNumber('+' + num);
@@ -109,7 +107,9 @@ app.get('/code', async (req, res) => {
 
             const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
             const { version } = await fetchLatestBaileysVersion();
+            
             console.log(`🔌 Creating socket for session: ${id}`);
+            
             let sock = makeWASocket({
                 version,
                 auth: {
@@ -123,41 +123,51 @@ app.get('/code', async (req, res) => {
                     return { conversation: 'GIFT MD' };
                 }
             });
-            // ✅ FIX 8: Request pairing code and respond immediately
+
+            // ✅ Request pairing code
             if (!sock.authState.creds.registered) {
                 await delay(1500);
+                
                 try {
                     console.log(`🔐 Requesting pairing code for: ${num}`);
                     const code = await sock.requestPairingCode(num);
-        
-                console.log(`✅ Pairing code generated: ${code}`);
-                
-                if (!res.headersSent) {
-                    // ✅ SEND RESPONSE IMMEDIATELY WITH success FLAG
-                    res.json({
-                        bot: "GIFT-MD",
-                        success: true,
-                        code: code 
-                    });
-                }
-            } catch (pairError) {
-                console.error('❌ Pairing error:', pairError.message);
-                await removeFile(sessionPath);
-                
-                if (!res.headersSent) {
-                    return res.status(500).json({
-                        success: false,
-                        code: 'Failed to generate code. Number may be invalid or already paired.'
-                    });
+                    
+                    console.log(`✅ Pairing code generated: ${code}`);
+                    
+                    if (!res.headersSent) {
+                        res.json({
+                            bot: "GIFT-MD",
+                            success: true,
+                            code: code 
+                        });
+                    }
+                } catch (pairError) {
+                    console.error('❌ Pairing error:', pairError.message);
+                    await removeFile(sessionPath);
+                    
+                    if (!res.headersSent) {
+                        return res.status(500).json({
+                            success: false,
+                            code: 'Failed to generate code. Try again later.'
+                        });
+                    }
                 }
             }
-        }
+
+            // ✅ Save credentials
             sock.ev.on('creds.update', saveCreds);
 
+            // ✅ FIXED CONNECTION HANDLER
             sock.ev.on('connection.update', async (s) => {
                 const { connection, lastDisconnect } = s;
 
                 if (connection === 'open') {
+                    // ✅ Prevent duplicate sends
+                    if (completedSessions.has(id)) {
+                        console.log(`⚠️ Session ${id} already sent, skipping`);
+                        return;
+                    }
+                    
                     console.log(`✅ Connection opened for: ${num}`);
                     await delay(5000);
 
@@ -169,14 +179,14 @@ app.get('/code', async (req, res) => {
                         }
 
                         let data = fs.readFileSync(credsPath);
-                        await delay(800);
-
                         let b64data = Buffer.from(data).toString('base64');
 
+                        // Send session ID
                         await sock.sendMessage(sock.user.id, {
                             text: 'GIFT-MD~' + b64data
                         });
 
+                        // Send instructions
                         let GIFT_MD_TEXT = `
 ╔════════════════════════════════
 ║ ✅ SESSION CONNECTED
@@ -210,12 +220,24 @@ app.get('/code', async (req, res) => {
                         await sock.sendMessage(sock.user.id, { text: GIFT_MD_TEXT });
 
                         console.log(`📤 Session sent to: ${num}`);
-
-                        await delay(100);
-                        await sock.ws.close();
+                        
+                        // ✅ Mark as completed
+                        completedSessions.add(id);
+                        
+                        // ✅ Close connection gracefully
+                        await delay(2000);
+                        sock.end(undefined);
+                        
+                        // ✅ Schedule delayed cleanup (10 seconds)
+                        setTimeout(() => {
+                            removeFile(sessionPath);
+                            completedSessions.delete(id);
+                            console.log(`🗑️ Cleaned session: ${id}`);
+                        }, 10000);
+                        
                     } catch (sessionError) {
                         console.error('❌ Session error:', sessionError.message);
-                    } finally {
+                        completedSessions.add(id);
                         await removeFile(sessionPath);
                     }
 
@@ -224,11 +246,37 @@ app.get('/code', async (req, res) => {
                     
                     console.log(`❌ Connection closed. Status: ${statusCode}`);
 
-                    if (statusCode !== 401) {
-                        console.log('🔄 Retrying connection...');
-                        await delay(5000);
+                    // ✅ Don't retry if session already sent
+                    if (completedSessions.has(id)) {
+                        console.log(`✅ Session already sent for ${id}, not retrying`);
+                        return;
+                    }
+
+                    // ✅ Handle specific disconnect reasons
+                    if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
+                        console.log(`🛑 Logged out - stopping`);
+                        await removeFile(sessionPath);
+                    } 
+                    else if (statusCode === 428) {
+                        console.log(`🛑 Bad session - stopping`);
+                        await removeFile(sessionPath);
+                    }
+                    else if (statusCode === 515) {
+                        console.log(`🛑 Rate limited - stopping`);
+                        await removeFile(sessionPath);
+                    }
+                    else if (statusCode === DisconnectReason.restartRequired) {
+                        console.log('🔄 Restart required, retrying...');
+                        await delay(3000);
                         GIFT_MD_PAIR_CODE();
-                    } else {
+                    }
+                    else if (statusCode === DisconnectReason.timedOut) {
+                        console.log('⏱️ Timed out, retrying...');
+                        await delay(3000);
+                        GIFT_MD_PAIR_CODE();
+                    }
+                    else {
+                        console.log(`🛑 Unknown error (${statusCode}), stopping`);
                         await removeFile(sessionPath);
                     }
                 }
@@ -250,20 +298,22 @@ app.get('/code', async (req, res) => {
     return await GIFT_MD_PAIR_CODE();
 });
 
-// Health check
+// ✅ Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'online', 
         timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        activeSessions: completedSessions.size
     });
 });
 
-// ✅ FIX 9: Root endpoint
+// ✅ Root endpoint
 app.get('/', (req, res) => {
     res.json({
         service: 'GIFT MD Pairing API',
         status: 'online',
+        version: '2.0.0',
         endpoints: {
             pairing: '/code?number=YOUR_NUMBER',
             health: '/health'
@@ -271,7 +321,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// Start server
+// ✅ Start server
 app.listen(PORT, () => {
     console.log(`
 ╔════════════════════════════════╗
@@ -285,7 +335,7 @@ app.listen(PORT, () => {
     `);
 });
 
-// ✅ FIX 10: Cleanup old sessions periodically
+// ✅ Cleanup old sessions periodically (every 5 minutes)
 setInterval(() => {
     try {
         if (!fs.existsSync(tempDir)) return;
@@ -293,17 +343,22 @@ setInterval(() => {
         const files = fs.readdirSync(tempDir);
         files.forEach(file => {
             const filePath = path.join(tempDir, file);
-            const stats = fs.statSync(filePath);
-            const now = Date.now();
-            const age = now - stats.mtimeMs;
             
-            // Delete sessions older than 10 minutes
-            if (age > 10 * 60 * 1000) {
-                removeFile(filePath);
-                console.log(`🗑️ Cleaned old session: ${file}`);
+            try {
+                const stats = fs.statSync(filePath);
+                const now = Date.now();
+                const age = now - stats.mtimeMs;
+                
+                // Delete sessions older than 15 minutes
+                if (age > 15 * 60 * 1000) {
+                    removeFile(filePath);
+                    console.log(`🗑️ Cleaned old session: ${file}`);
+                }
+            } catch (err) {
+                // Skip if file already deleted
             }
         });
     } catch (error) {
         console.error('Cleanup error:', error);
     }
-}, 5 * 60 * 1000); // Run every 5 minutes
+}, 5 * 60 * 1000);
