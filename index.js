@@ -11,6 +11,7 @@ import makeWASocket, {
     makeCacheableSignalKeyStore,
     Browsers,
     delay,
+    proto,
     fetchLatestBaileysVersion
 } from '@whiskeysockets/baileys';
 
@@ -107,23 +108,24 @@ app.get('/code', async (req, res) => {
             }
 
             const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-            const { version } = await fetchLatestBaileysVersion();
+            const { version, isLatest } = await fetchLatestBaileysVersion();
 
             console.log(`🔌 Creating socket for session: ${id}`);
 
             let sock = makeWASocket({
-                version,
-                auth: {
+        version,
+        logger: pino({ level: 'silent' }),
+        printQRInTerminal: false,
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
         },
-                printQRInTerminal: false,
-                logger: pino({ level: 'silent' }),
-                browser: ["Ubuntu", "Chrome", "20.0.04"],
-                getMessage: async (key) => {
-                    return { conversation: 'GIFT MD' };
-                }
-            });
+        markOnlineOnConnect: true,
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: false,            msgRetryCounterCache,
+        defaultQueryTimeoutMs: undefined,
+    })
 
             // ✅ FIX 8: Request pairing code and respond immediately
             if (!sock.authState.creds.registered) {
