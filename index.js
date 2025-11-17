@@ -108,35 +108,28 @@ app.get('/code', async (req, res) => {
             }
 
             const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-            const { version, isLatest } = await fetchLatestBaileysVersion();
-
-             console.log(`🔌 Creating socket for session: ${id}`);
-        let sock = makeWASocket({
-            version,
-            logger: pino({ level: 'silent' }),
-            printQRInTerminal: false,
-            mobile: false, // ✅ ADDED
-            browser: ["Chrome (Linux)", "", ""], // ✅ UPDATED
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })), // ✅ FIXED
-            },
-            markOnlineOnConnect: false, // ✅ CHANGED to false for pairing
-            generateHighQualityLinkPreview: true,
-            syncFullHistory: false, // ✅ FIXED typo
-            fireInitQueries: true, // ✅ ADDED
-            shouldSyncHistoryMessage: () => false, // ✅ ADDED
-            getMessage: async () => ({ conversation: '' }), // ✅ ADDED
-            // ❌ REMOVED msgRetryCounterCache (not needed for pairing)
-            defaultQueryTimeoutMs: undefined,
-            connectTimeoutMs: 60000, // ✅ ADDED
-        });
-        // ✅ FIX 8: Request pairing code and respond immediately
-        if (!sock.authState.creds.registered) {
-            await delay(3000); // ✅ INCREASED from 1500 to 3000
-            try {
-                console.log(`🔐 Requesting pairing code for: ${num}`);
-                const code = await sock.requestPairingCode(num);
+            const { version } = await fetchLatestBaileysVersion();
+            console.log(`🔌 Creating socket for session: ${id}`);
+            let sock = makeWASocket({
+                version,
+                auth: {
+                    creds: state.creds,
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+                },
+                printQRInTerminal: false,
+                logger: pino({ level: 'silent' }),
+                browser: Browsers.ubuntu('Chrome'),
+                getMessage: async (key) => {
+                    return { conversation: 'GIFT MD' };
+                }
+            });
+            // ✅ FIX 8: Request pairing code and respond immediately
+            if (!sock.authState.creds.registered) {
+                await delay(1500);
+                try {
+                    console.log(`🔐 Requesting pairing code for: ${num}`);
+                    const code = await sock.requestPairingCode(num);
+        
                 console.log(`✅ Pairing code generated: ${code}`);
                 
                 if (!res.headersSent) {
