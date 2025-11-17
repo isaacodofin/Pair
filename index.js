@@ -110,53 +110,55 @@ app.get('/code', async (req, res) => {
             const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
             const { version, isLatest } = await fetchLatestBaileysVersion();
 
-            console.log(`🔌 Creating socket for session: ${id}`);
-
-            let sock = makeWASocket({
-        version,
-        logger: pino({ level: 'silent' }),
-        printQRInTerminal: false,
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
-        auth: {
-            creds: state.creds,
-            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-        },
-        markOnlineOnConnect: true,
-        generateHighQualityLinkPreview: true,
-        syncFullHistory: false,            msgRetryCounterCache,
-        defaultQueryTimeoutMs: undefined,
-    })
-
-            // ✅ FIX 8: Request pairing code and respond immediately
-            if (!sock.authState.creds.registered) {
-                await delay(1500);
-
-                try {
-                    console.log(`🔐 Requesting pairing code for: ${num}`);
-                    const code = await sock.requestPairingCode(num);
-
-                    console.log(`✅ Pairing code generated: ${code}`);
-                    
-                    if (!res.headersSent) {
-                        // ✅ SEND RESPONSE IMMEDIATELY WITH success FLAG
-                        return res.json({ 
-                            success: true,
-                            code: code 
-                        });
-                    }
-                } catch (pairError) {
-                    console.error('❌ Pairing error:', pairError.message);
-                    await removeFile(sessionPath);
-                    
-                    if (!res.headersSent) {
-                        return res.status(500).json({
-                            success: false,
-                            code: 'Failed to generate code. Number may be invalid or already paired.'
-                        });
-                    }
+             console.log(`🔌 Creating socket for session: ${id}`);
+        let sock = makeWASocket({
+            version,
+            logger: pino({ level: 'silent' }),
+            printQRInTerminal: false,
+            mobile: false, // ✅ ADDED
+            browser: ["Chrome (Linux)", "", ""], // ✅ UPDATED
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "silent" })), // ✅ FIXED
+            },
+            markOnlineOnConnect: false, // ✅ CHANGED to false for pairing
+            generateHighQualityLinkPreview: true,
+            syncFullHistory: false, // ✅ FIXED typo
+            fireInitQueries: true, // ✅ ADDED
+            shouldSyncHistoryMessage: () => false, // ✅ ADDED
+            getMessage: async () => ({ conversation: '' }), // ✅ ADDED
+            // ❌ REMOVED msgRetryCounterCache (not needed for pairing)
+            defaultQueryTimeoutMs: undefined,
+            connectTimeoutMs: 60000, // ✅ ADDED
+        });
+        // ✅ FIX 8: Request pairing code and respond immediately
+        if (!sock.authState.creds.registered) {
+            await delay(3000); // ✅ INCREASED from 1500 to 3000
+            try {
+                console.log(`🔐 Requesting pairing code for: ${num}`);
+                const code = await sock.requestPairingCode(num);
+                console.log(`✅ Pairing code generated: ${code}`);
+                
+                if (!res.headersSent) {
+                    // ✅ SEND RESPONSE IMMEDIATELY WITH success FLAG
+                    res.json({
+                        bot: GIFT-MD,
+                        success: true,
+                        code: code 
+                    });
+                }
+            } catch (pairError) {
+                console.error('❌ Pairing error:', pairError.message);
+                await removeFile(sessionPath);
+                
+                if (!res.headersSent) {
+                    return res.status(500).json({
+                        success: false,
+                        code: 'Failed to generate code. Number may be invalid or already paired.'
+                    });
                 }
             }
-
+        }
             sock.ev.on('creds.update', saveCreds);
 
             sock.ev.on('connection.update', async (s) => {
