@@ -211,7 +211,7 @@ app.get('/code', async (req, res) => {
 
                         console.log(`📤 Session sent to: ${num}`);
 
-                        await delay(100);
+                        await delay(2000);
                         await sock.ws.close();
                     } catch (sessionError) {
                         console.error('❌ Session error:', sessionError.message);
