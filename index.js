@@ -121,7 +121,7 @@ app.get('/code', async (req, res) => {
                     console.log(`🔐 Requesting pairing code for: ${num}`);
                     
                     // ✅ CUSTOM BRANDING (like June MD)
-                    const custom = "GIFT-MD";
+                    const custom = "GIFT-PAIR";
                     const code = await sock.requestPairingCode(num, custom);
                     
                     console.log(`✅ Pairing code generated: ${code}`);
