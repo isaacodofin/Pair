@@ -283,7 +283,7 @@ app.listen(PORT, () => {
 ║   Port: ${PORT}                    ║
 ╚════════════════════════════════╝
 
-📡 API Endpoint: http://localhost:${PORT}/code?number=...
+📡 API Endpoint: https://pair-v44u.onrender.com/code?number=...
 🌐 CORS: Enabled for all origins
     `);
 });
