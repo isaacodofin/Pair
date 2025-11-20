@@ -1,17 +1,15 @@
 import express from 'express';
 import fs from 'fs';
-import cors from 'cors';
 import pino from 'pino';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import awesomePhoneNumber from 'awesome-phonenumber';
 import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason,
-  makeCacheableSignalKeyStore,
-  Browsers,
-  delay,
-  fetchLatestBaileysVersion
+    useMultiFileAuthState,
+    DisconnectReason,
+    makeCacheableSignalKeyStore,
+    Browsers,
+    delay,
+    fetchLatestBaileysVersion
 } from '@whiskeysockets/baileys';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,382 +18,147 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Track completed sessions
-const completedSessions = new Set();
-const activeSockets = new Map();
-
-// ✅ CORS Configuration
-app.use(cors());
-app.options('*', cors());
-
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Serve static files
 app.use(express.static('public'));
 
-// ✅ Ensure temp directory exists
-const tempDir = path.join(__dirname, 'temp');
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
-}
-
-// Utility functions
+// Utility to generate random ID
 function makeid(length = 10) {
-  let result = '';
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
 }
 
+// Remove temp folder
 function removeFile(filePath) {
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.rmSync(filePath, { recursive: true, force: true });
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Error removing file:', error);
-    return false;
-  }
+    if (!fs.existsSync(filePath)) return false;
+    fs.rmSync(filePath, { recursive: true, force: true });
 }
 
-// ✅ FIXED: Send session with retry mechanism
-async function sendSessionToUser(sock, sessionPath, num, id, retries = 3) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      console.log(`📤 Attempt ${attempt}/${retries} - Sending session to: ${num}`);
-      
-      await delay(2000); // Wait for stable connection
-      
-      const credsPath = path.join(sessionPath, 'creds.json');
-      
-      if (!fs.existsSync(credsPath)) {
-        throw new Error('Credentials file not found');
-      }
-
-      let data = fs.readFileSync(credsPath);
-      let b64data = Buffer.from(data).toString('base64');
-
-      // ✅ Send session ID with retry
-      let session = await sock.sendMessage(sock.user.id, {
-        text: 'GIFT-MD~' + b64data
-      });
-
-      await delay(1000);
-
-      // ✅ Send instructions
-      let GIFT_MD_TEXT = `
-╔════════════════════◇
-║『 SESSION CONNECTED 』
-║ 🤖 BOT: GIFT MD
-║ 👤 USER: ${sock.user.id.split('@')[0]}
-║ 📱 NUMBER: +${num}
-║ 🟢 TYPE: base64
-╚════════════════════╝
-
-╔════════════════════◇
-║『 You've chosen GIFT MD Bot 』
-║
-║ 📋 SETUP INSTRUCTIONS:
-║ 1. Copy the session ID above
-║ 2. Go to your deployment
-║ 3. Add to .env:
-║    SESSION_ID=GIFT-MD~[session]
-║ 4. Deploy your bot
-║
-╠════════════════════◇
-║ 🔗 SUPPORT
-║ 📱 Owner: +2348154853640
-║ 💬 GitHub: github.com/isaacodofin
-║ 🌐 Channel: whatsapp.com/channel/...
-╚════════════════════╝
-
-⚠️ Keep your session private!
-🎉 Enjoy GIFT MD!
-
-Don't Forget To Give Star⭐ To My Repo`;
-
-      await sock.sendMessage(sock.user.id, { text: GIFT_MD_TEXT }, { quoted: session });
-
-      console.log(`✅ Session successfully sent to: ${num}`);
-      
-      // ✅ Mark as completed
-      completedSessions.add(id);
-      
-      return true;
-
-    } catch (error) {
-      console.error(`❌ Attempt ${attempt} failed:`, error.message);
-      
-      if (attempt < retries) {
-        console.log(`⏳ Retrying in 3 seconds...`);
-        await delay(3000);
-      } else {
-        console.error(`❌ All ${retries} attempts failed for session ${id}`);
-        return false;
-      }
-    }
-  }
-  
-  return false;
-}
-
-// ✅ MAIN PAIRING ENDPOINT
+// Pairing endpoint
 app.get('/code', async (req, res) => {
-  const id = makeid();
-  let num = req.query.number;
+    const id = makeid();
+    let num = req.query.number;
 
-  console.log(`📞 Pairing request for: ${num}`);
-
-  async function GIFT_MD_PAIR_CODE() {
-    const sessionPath = path.join(tempDir, id);
-
-    try {
-      const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-      const { version } = await fetchLatestBaileysVersion();
-
-      console.log(`🔌 Creating socket for session: ${id}`);
-
-      let sock = makeWASocket({
-        version,
-        auth: {
-          creds: state.creds,
-          keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' })),
-        },
-        printQRInTerminal: false,
-        logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
-        browser: Browsers.windows('Edge'),
-        getMessage: async (key) => {
-          return { conversation: 'GIFT MD' };
-        }
-      });
-
-      // ✅ Store active socket
-      activeSockets.set(id, sock);
-
-      // ✅ Request pairing code
-      if (!sock.authState.creds.registered) {
-        await delay(1500);
-
-        // Clean number
-        num = num.replace(/[^0-9]/g, '');
-
-        // Validate number
-        const pn = awesomePhoneNumber('+' + num);
-        if (!pn.isValid()) {
-          console.log(`❌ Invalid phone number: ${num}`);
-          if (!res.headersSent) {
-            return res.status(400).json({
-              success: false,
-              code: 'Invalid phone number format'
-            });
-          }
-        }
-
+    async function GIFT_MD_PAIR_CODE() {
+        const { state, saveCreds } = await useMultiFileAuthState('./temp/' + id);
+        
         try {
-          console.log(`🔐 Requesting pairing code for: ${num}`);
-
-          const code = await sock.requestPairingCode(num);
-
-          console.log(`✅ Pairing code generated: ${code}`);
-
-          if (!res.headersSent) {
-            res.json({
-              bot: "GIFT-MD",
-              success: true,
-              code: code
+            const { version } = await fetchLatestBaileysVersion();
+            
+            let sock = makeWASocket({
+                version,
+                auth: {
+                    creds: state.creds,
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+                },
+                printQRInTerminal: false,
+                logger: pino({ level: 'silent' }),
+                browser: Browsers.macOS('Chrome'),
+                getMessage: async (key) => {
+                    return { conversation: 'GIFT MD' };
+                }
             });
-          }
-        } catch (pairError) {
-          console.error('❌ Pairing error:', pairError.message);
-          await removeFile(sessionPath);
 
-          if (!res.headersSent) {
-            return res.status(500).json({
-              success: false,
-              code: 'Service Currently Unavailable'
-            });
-          }
-        }
-      }
-
-      // ✅ Save credentials
-      sock.ev.on('creds.update', saveCreds);
-
-      // ✅ FIXED CONNECTION HANDLER
-      sock.ev.on('connection.update', async (s) => {
-        const { connection, lastDisconnect } = s;
-
-        if (connection === 'open') {
-          // ✅ Prevent duplicate sends
-          if (completedSessions.has(id)) {
-            console.log(`⚠️ Session ${id} already sent, skipping`);
-            return;
-          }
-
-          console.log(`✅ Connection opened for: ${num}`);
-
-          // ✅ Send session with retry mechanism
-          const success = await sendSessionToUser(sock, sessionPath, num, id);
-
-          if (success) {
-            // ✅ Wait before closing to ensure delivery
-            await delay(3000);
-
-            try {
-              await sock.ws.close();
-            } catch (e) {
-              console.log('Socket already closed');
+            if (!sock.authState.creds.registered) {
+                await delay(1500);
+                num = num.replace(/[^0-9]/g, '');
+                const code = await sock.requestPairingCode(num);
+                if (!res.headersSent) {
+                    await res.send({ code });
+                }
             }
 
-            // ✅ Clean up
-            activeSockets.delete(id);
+            sock.ev.on('creds.update', saveCreds);
             
-            // ✅ Clean up files after delay
-            setTimeout(() => {
-              removeFile(sessionPath);
-            }, 5000);
-          } else {
-            console.error(`❌ Failed to send session for ${id}`);
-            completedSessions.add(id);
-            await removeFile(sessionPath);
-            activeSockets.delete(id);
-          }
+            sock.ev.on('connection.update', async (s) => {
+                const { connection, lastDisconnect } = s;
+                
+                if (connection === 'open') {
+                    await delay(5000);
+                    let data = fs.readFileSync(__dirname + `/temp/${id}/creds.json`);
+                    await delay(800);
+                    let b64data = Buffer.from(data).toString('base64');
+                    let session = await sock.sendMessage(sock.user.id, { text: 'GIFT-MD~' + b64data });
 
-        } else if (connection === 'close') {
-          const statusCode = lastDisconnect?.error?.output?.statusCode;
+                    let GIFT_MD_TEXT = `
+╔════════════════════◇
+║ SESSION CONNECTED ✅
+║ 🎁 GIFT MD BOT
+║ By Isaac Favour
+╚════════════════════╝
 
-          console.log(`❌ Connection closed. Status: ${statusCode}`);
+╔════════════════════◇
+║ SETUP INSTRUCTIONS:
+║ 
+║ 1. Copy the session above (GIFT-MD~...)
+║ 2. Go to your hosting platform
+║ 3. Set environment variable:
+║    SESSION_ID = <paste here>
+║ 4. Deploy your bot
+╚════════════════════╝
 
-          // ✅ Don't retry if session already sent
-          if (completedSessions.has(id)) {
-            console.log(`✅ Session already sent for ${id}`);
-            activeSockets.delete(id);
-            return;
-          }
+╔════════════════════◇
+║ SUPPORT & LINKS:
+║ 
+║ 📺 YouTube: @officialGift-md
+║ 📱 Owner: +2348085046874
+║ 🔗 Repo: github.com/isaacfont461461-cmd
+║ 💬 Channel: whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A
+║ ☬ ☬ ☬ ☬
+╚════════════════════╝
 
-          // ✅ Clean up on 401 (logged out)
-          if (statusCode === 401) {
-            console.log(`❌ Logged out error for ${id}`);
-            await removeFile(sessionPath);
-            activeSockets.delete(id);
-          } else {
-            // ✅ Retry on other errors
-            console.log('🔄 Retrying connection...');
-            await delay(5000);
-            GIFT_MD_PAIR_CODE();
-          }
+🎉 Enjoy GIFT MD!
+
+Don't forget to give a ⭐ to the repo!
+______________________________`;
+
+                    await sock.sendMessage(sock.user.id, { text: GIFT_MD_TEXT }, { quoted: session });
+
+                    await delay(100);
+                    await sock.ws.close();
+                    return await removeFile('./temp/' + id);
+                    
+                } else if (connection === 'close' && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
+                    await delay(10000);
+                    GIFT_MD_PAIR_CODE();
+                }
+            });
+            
+        } catch (err) {
+            console.log('Service restarted:', err);
+            await removeFile('./temp/' + id);
+            if (!res.headersSent) {
+                await res.send({ code: 'Service Currently Unavailable' });
+            }
         }
-      });
-
-    } catch (err) {
-      console.error('❌ Service error:', err.message);
-      await removeFile(sessionPath);
-      activeSockets.delete(id);
-
-      if (!res.headersSent) {
-        return res.json({
-          success: false,
-          code: 'Service Currently Unavailable'
-        });
-      }
     }
-  }
 
-  return await GIFT_MD_PAIR_CODE();
+    return await GIFT_MD_PAIR_CODE();
 });
 
-// ✅ Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'online',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    completedSessions: completedSessions.size,
-    activeSessions: activeSockets.size
-  });
-});
-
-// ✅ Root endpoint
+// Serve the pairing HTML page
 app.get('/', (req, res) => {
-  res.json({
-    service: 'GIFT MD Pairing API',
-    status: 'online',
-    version: '2.1.0',
-    style: 'Enhanced Reliability',
-    endpoints: {
-      pairing: '/code?number=YOUR_NUMBER',
-      health: '/health'
-    }
-  });
+    res.sendFile(path.join(__dirname, 'public', 'pair.html'));
 });
 
-// ✅ Start server
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ status: 'online' });
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`
+    console.log(`
 ╔════════════════════════════════╗
-║   GIFT MD PAIRING API         ║
-║   Status: ✅ ONLINE            ║
-║   Port: ${PORT}                ║
-║   Version: 2.1.0 (Fixed)      ║
+║   🎁 GIFT MD PAIRING SITE      ║
+║   Status: ONLINE ✅            ║
+║   Port: ${PORT}                    ║
 ╚════════════════════════════════╝
 
-📡 API Endpoint: http://localhost:${PORT}/code?number=...
-🌐 CORS: Enabled for all origins
-  `);
-});
-
-// ✅ Cleanup old sessions (every 5 minutes)
-setInterval(() => {
-  try {
-    if (!fs.existsSync(tempDir)) return;
-
-    const files = fs.readdirSync(tempDir);
-    files.forEach(file => {
-      const filePath = path.join(tempDir, file);
-
-      try {
-        const stats = fs.statSync(filePath);
-        const now = Date.now();
-        const age = now - stats.mtimeMs;
-
-        // Remove sessions older than 15 minutes
-        if (age > 15 * 60 * 1000) {
-          removeFile(filePath);
-          console.log(`🗑️ Cleaned old session: ${file}`);
-        }
-      } catch (err) {
-        // Skip
-      }
-    });
-  } catch (error) {
-    console.error('Cleanup error:', error);
-  }
-}, 5 * 60 * 1000);
-
-// ✅ Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  
-  // Close all active sockets
-  for (const [id, sock] of activeSockets.entries()) {
-    try {
-      await sock.ws.close();
-      console.log(`✅ Closed socket: ${id}`);
-    } catch (e) {
-      // Ignore
-    }
-  }
-  
-  process.exit(0);
+🌐 Pairing Site: http://localhost:${PORT}
+📡 API: http://localhost:${PORT}/code?number=...
+    `);
 });
