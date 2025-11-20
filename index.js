@@ -52,14 +52,12 @@ app.get('/code', async (req, res) => {
                 version,
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' })),
                 },
+                version: [2, 3000, 1025190524],
                 printQRInTerminal: false,
-                logger: pino({ level: 'silent' }),
-                browser: Browsers.macOS('Chrome'),
-                getMessage: async (key) => {
-                    return { conversation: 'GIFT MD' };
-                }
+                logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
+                browser: Browsers.windows('Edge'),
             });
 
             if (!sock.authState.creds.registered) {
