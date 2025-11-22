@@ -45,6 +45,11 @@ function removeFile(filePath) {
 app.get('/code', async (req, res) => {
     const id = makeid();
     let num = req.query.number;
+    
+    // ✅ Track retry count and session status
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    let sessionSent = false;
 
     async function GIFT_MD_PAIR_CODE() {
         const { state, saveCreds } = await useMultiFileAuthState('./temp/' + id);
@@ -161,9 +166,17 @@ ______________________________`;
                         console.log('✅ Instructions message sent successfully!');
                         console.log('🎊 All messages delivered! Closing connection...');
 
+                        // ✅ Mark session as sent
+                        sessionSent = true;
+
                         await delay(2000);
                         await sock.ws.close();
-                        return await removeFile('./temp/' + id);
+                        
+                        // ✅ Clean up temp folder
+                        await removeFile('./temp/' + id);
+                        
+                        console.log('✅ Session pairing completed. No more retries.');
+                        return;
                         
                     } catch (sendError) {
                         console.log('❌ ERROR while sending messages:', sendError.message);
@@ -175,18 +188,41 @@ ______________________________`;
                 } else if (connection === 'close') {
                     console.log('⚠️ Connection closed');
                     
+                    // ✅ If session was already sent, don't retry
+                    if (sessionSent) {
+                        console.log('✅ Session already sent. Stopping retries.');
+                        await removeFile('./temp/' + id);
+                        return;
+                    }
+                    
                     if (lastDisconnect && lastDisconnect.error) {
                         const statusCode = lastDisconnect.error.output?.statusCode;
                         console.log('Disconnect reason:', statusCode);
                         
-                        if (statusCode !== 401) {
-                            console.log('🔄 Retrying connection in 10 seconds...');
-                            await delay(10000);
-                            GIFT_MD_PAIR_CODE();
-                        } else {
-                            console.log('❌ Authentication failed (401)');
+                        // ✅ Don't retry on 401 (auth failure)
+                        if (statusCode === 401) {
+                            console.log('❌ Authentication failed (401). Stopping retries.');
                             await removeFile('./temp/' + id);
+                            return;
                         }
+                        
+                        // ✅ Check retry limit
+                        if (retryCount >= MAX_RETRIES) {
+                            console.log(`❌ Max retries (${MAX_RETRIES}) reached. Stopping.`);
+                            await removeFile('./temp/' + id);
+                            return;
+                        }
+                        
+                        // ✅ Increment retry count and retry
+                        retryCount++;
+                        console.log(`🔄 Retry ${retryCount}/${MAX_RETRIES} in 10 seconds...`);
+                        await delay(10000);
+                        GIFT_MD_PAIR_CODE();
+                        
+                    } else {
+                        // No error info, just clean up
+                        console.log('❌ Connection closed without error info. Cleaning up.');
+                        await removeFile('./temp/' + id);
                     }
                 }
             });
@@ -224,6 +260,6 @@ app.listen(PORT, () => {
 ╚════════════════════════════════╝
 
 🌐 Pairing Site: http://localhost:${PORT}
-📡 API: http://localhost:${PORT}/code?number=...
+📡 API: https://pair-v44u.onrender.com/code?number=...
     `);
 });
