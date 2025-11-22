@@ -54,7 +54,6 @@ app.get('/code', async (req, res) => {
                     creds: state.creds,
                     keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' })),
                 },
-                version: [2, 3000, 1025190524],
                 printQRInTerminal: false,
                 logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
                 browser: Browsers.windows('Edge'),
@@ -64,6 +63,7 @@ app.get('/code', async (req, res) => {
                 await delay(1500);
                 num = num.replace(/[^0-9]/g, '');
                 const code = await sock.requestPairingCode(num);
+                console.log(`✅ Pairing code generated: ${code} for ${num}`);
                 if (!res.headersSent) {
                     await res.send({ code });
                 }
@@ -75,13 +75,49 @@ app.get('/code', async (req, res) => {
                 const { connection, lastDisconnect } = s;
                 
                 if (connection === 'open') {
+                    console.log('🎉 Connection opened successfully!');
+                    
                     await delay(5000);
-                    let data = fs.readFileSync(__dirname + `/temp/${id}/creds.json`);
-                    await delay(800);
-                    let b64data = Buffer.from(data).toString('base64');
-                    let session = await sock.sendMessage(sock.user.id, { text: 'GIFT-MD~' + b64data });
+                    
+                    // ✅ Verify user exists
+                    if (!sock.user || !sock.user.id) {
+                        console.log('❌ ERROR: sock.user is undefined after connection!');
+                        console.log('sock.user:', sock.user);
+                        await sock.ws.close();
+                        return await removeFile('./temp/' + id);
+                    }
+                    
+                    console.log('✅ User connected:', sock.user.id);
+                    
+                    try {
+                        // ✅ Verify creds file exists
+                        const credsPath = path.join(__dirname, 'temp', id, 'creds.json');
+                        
+                        if (!fs.existsSync(credsPath)) {
+                            console.log('❌ ERROR: Creds file not found at:', credsPath);
+                            await sock.ws.close();
+                            return await removeFile('./temp/' + id);
+                        }
+                        
+                        console.log('✅ Reading creds file from:', credsPath);
+                        let data = fs.readFileSync(credsPath);
+                        
+                        await delay(800);
+                        
+                        let b64data = Buffer.from(data).toString('base64');
+                        let sessionString = 'GIFT-MD~' + b64data;
+                        
+                        console.log('✅ Session string created, length:', sessionString.length);
+                        console.log('✅ Sending session to WhatsApp...');
+                        
+                        // ✅ Send session message
+                        let session = await sock.sendMessage(sock.user.id, { 
+                            text: sessionString 
+                        });
+                        
+                        console.log('✅ Session message sent successfully!');
 
-                    let GIFT_MD_TEXT = `
+                        let GIFT_MD_TEXT = `
 ╔════════════════════◇
 ║ SESSION CONNECTED ✅
 ║ 🎁 GIFT MD BOT
@@ -113,20 +149,47 @@ app.get('/code', async (req, res) => {
 Don't forget to give a ⭐ to the repo!
 ______________________________`;
 
-                    await sock.sendMessage(sock.user.id, { text: GIFT_MD_TEXT }, { quoted: session });
+                        console.log('✅ Sending instructions message...');
+                        await sock.sendMessage(sock.user.id, { 
+                            text: GIFT_MD_TEXT 
+                        }, { quoted: session });
+                        
+                        console.log('✅ Instructions message sent successfully!');
+                        console.log('🎊 All messages delivered! Closing connection...');
 
-                    await delay(100);
-                    await sock.ws.close();
-                    return await removeFile('./temp/' + id);
+                        await delay(2000); // ✅ Wait 2 seconds before closing
+                        await sock.ws.close();
+                        return await removeFile('./temp/' + id);
+                        
+                    } catch (sendError) {
+                        console.log('❌ ERROR while sending messages:', sendError.message);
+                        console.log('Full error:', sendError);
+                        await sock.ws.close();
+                        return await removeFile('./temp/' + id);
+                    }
                     
-                } else if (connection === 'close' && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
-                    await delay(10000);
-                    GIFT_MD_PAIR_CODE();
+                } else if (connection === 'close') {
+                    console.log('⚠️ Connection closed');
+                    
+                    if (lastDisconnect && lastDisconnect.error) {
+                        const statusCode = lastDisconnect.error.output?.statusCode;
+                        console.log('Disconnect reason:', statusCode);
+                        
+                        if (statusCode !== 401) {
+                            console.log('🔄 Retrying connection in 10 seconds...');
+                            await delay(10000);
+                            GIFT_MD_PAIR_CODE();
+                        } else {
+                            console.log('❌ Authentication failed (401)');
+                            await removeFile('./temp/' + id);
+                        }
+                    }
                 }
             });
             
         } catch (err) {
-            console.log('Service restarted:', err);
+            console.log('❌ Service error:', err.message);
+            console.log('Full error:', err);
             await removeFile('./temp/' + id);
             if (!res.headersSent) {
                 await res.send({ code: 'Service Currently Unavailable' });
