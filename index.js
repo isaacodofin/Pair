@@ -3,14 +3,18 @@ import fs from 'fs';
 import pino from 'pino';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import makeWASocket, {
+
+// ✅ FIXED IMPORT
+import pkg from '@whiskeysockets/baileys';
+const { 
+    default: makeWASocket,
     useMultiFileAuthState,
     DisconnectReason,
     makeCacheableSignalKeyStore,
     Browsers,
     delay,
     fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys';
+} = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -157,7 +161,7 @@ ______________________________`;
                         console.log('✅ Instructions message sent successfully!');
                         console.log('🎊 All messages delivered! Closing connection...');
 
-                        await delay(2000); // ✅ Wait 2 seconds before closing
+                        await delay(2000);
                         await sock.ws.close();
                         return await removeFile('./temp/' + id);
                         
