@@ -8,6 +8,7 @@
     "start": "node index.js"
   },
 "dependencies": {
+    "jimp":"*",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "@whiskeysockets/baileys": "npm:angularsockets",
