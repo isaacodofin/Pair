@@ -32,11 +32,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       position: relative;
       overflow-x: hidden;
       color: var(--text);
       background: var(--bg-dark);
-      padding: 80px 20px 120px;
+      padding: 80px 20px 100px;
     }
 
     /* Animated gradient background - same as landing page */
@@ -264,80 +265,12 @@
       box-shadow: var(--glow);
     }
 
-    /* Music player */
-    .music-player {
-      width: 100%;
-      max-width: 500px;
-      background: var(--glass);
-      backdrop-filter: blur(var(--blur));
-      border-radius: var(--radius);
-      padding: 2rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      z-index: 90;
-      text-align: center;
-      margin-top: 2rem;
-    }
-
-    .music-player h3 {
-      color: var(--secondary);
-      margin-bottom: 0.5rem;
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-
-    .music-title {
-      font-weight: 700;
-      font-size: 1.2rem;
-      margin-bottom: 0.3rem;
-      background: var(--primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .music-subtitle {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .play-btn {
-      background: var(--primary);
-      border: none;
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto;
-      cursor: pointer;
-      box-shadow: var(--glow);
-      transition: var(--transition);
-    }
-
-    .play-btn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 0 40px rgba(102, 126, 234, 0.6);
-    }
-
-    .play-btn i {
-      color: white;
-      font-size: 1.5rem;
-    }
-
-    .time-display {
-      margin-top: 1.5rem;
-      font-size: 1rem;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    /* Back to home button */
+    /* Back to home button - MOVED TO BOTTOM CENTER */
     .back-home {
       position: fixed;
-      top: 1rem;
-      left: 1rem;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
       background: var(--glass);
       backdrop-filter: blur(var(--blur));
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -355,8 +288,27 @@
 
     .back-home:hover {
       background: var(--primary);
-      transform: translateX(-5px);
+      transform: translateX(-50%) translateY(-5px);
       box-shadow: var(--glow);
+    }
+
+    /* Footer info */
+    .footer-info {
+      margin-top: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-info a {
+      color: var(--secondary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .footer-info a:hover {
+      color: var(--highlight);
     }
 
     /* Responsive design */
@@ -380,14 +332,11 @@
       .input-container button {
         width: 100%;
       }
-      
-      .music-player {
-        padding: 1.5rem;
-      }
 
       .back-home {
         padding: 0.6rem 1rem;
         font-size: 0.9rem;
+        bottom: 1.5rem;
       }
     }
   </style>
@@ -409,7 +358,7 @@
     <div class="particle" style="width: 4px; height: 4px; left: 90%; animation-delay: 1s;"></div>
   </div>
 
-  <!-- Back to Home Button -->
+  <!-- Back to Home Button - NOW AT BOTTOM CENTER -->
   <a href="/" class="back-home">
     <i class="fas fa-arrow-left"></i>
     <span>Home</span>
@@ -449,16 +398,10 @@
       <button id="copy-code" onclick="copyCode()">COPY CODE</button>
     </div>
 
-    <!-- Music Player -->
-    <div class="music-player">
-      <h3>🎵 NOW PLAYING</h3>
-      <div class="music-title">GIFT MD Theme</div>
-      <div class="music-subtitle">by Isaac Favour</div>
-      <button class="play-btn" onclick="togglePlay()">
-        <i class="fas fa-pause" id="play-icon"></i>
-      </button>
-      <div class="time-display" id="time1">0:00</div>
-      <audio id="audio1" src="https://url.bwmxmd.online/Adams.ioeeyulj.m4a" loop></audio>
+    <!-- Footer Info -->
+    <div class="footer-info">
+      <p>Need help? Contact us on <a href="https://whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A" target="_blank">WhatsApp Channel</a></p>
+      <p style="margin-top: 0.5rem;">© 2025 GIFT MD by Isaac Favour</p>
     </div>
   </div>
 
@@ -541,45 +484,6 @@
         waitingMessage.style.display = "none";
       }
     });
-
-    // Music player controls
-    const audio = document.getElementById('audio1');
-    const playBtn = document.querySelector('.play-btn');
-    const playIcon = document.getElementById('play-icon');
-    const timeDisplay = document.getElementById('time1');
-    
-    // Auto-play music when page loads
-    document.addEventListener('click', function initAudio() {
-      audio.play().then(() => {
-        playIcon.classList.replace('fa-play', 'fa-pause');
-        updateTimeDisplay();
-      }).catch(error => {
-        console.log('Auto-play prevented:', error);
-      });
-      document.removeEventListener('click', initAudio);
-    }, { once: true });
-
-    function togglePlay() {
-      if (audio.paused) {
-        audio.play();
-        playIcon.classList.replace('fa-play', 'fa-pause');
-      } else {
-        audio.pause();
-        playIcon.classList.replace('fa-pause', 'fa-play');
-      }
-    }
-
-    function updateTimeDisplay() {
-      const minutes = Math.floor(audio.currentTime / 60);
-      const seconds = Math.floor(audio.currentTime % 60);
-      timeDisplay.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
-      
-      if (!audio.paused) {
-        requestAnimationFrame(updateTimeDisplay);
-      }
-    }
-
-    audio.addEventListener('timeupdate', updateTimeDisplay);
 
     // Battery status indicator
     async function updateBattery() {
