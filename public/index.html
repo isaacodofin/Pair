@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GIFT MD - WhatsApp Bot</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary: #00d4ff;
+      --bg-dark: #0a0e27;
+      --glass: rgba(255, 255, 255, 0.05);
+      --text: #ffffff;
+      --muted: #a0aec0;
+      --radius: 20px;
+      --blur: 20px;
+      --glow: 0 0 30px rgba(102, 126, 234, 0.5);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      background: var(--bg-dark);
+      color: var(--text);
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated background */
+    .bg-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #4facfe);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      filter: blur(100px);
+      opacity: 0.3;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Floating particles */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      background: var(--secondary);
+      border-radius: 50%;
+      opacity: 0.2;
+      animation: float 20s infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-100px) rotate(180deg); }
+    }
+
+    /* Container */
+    .container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Hero section */
+    .hero {
+      text-align: center;
+      max-width: 800px;
+      animation: fadeInUp 1s ease;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .logo-container {
+      margin-bottom: 2rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .logo {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 4px solid var(--secondary);
+      box-shadow: var(--glow);
+      object-fit: cover;
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      background: var(--primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 1rem;
+      text-shadow: var(--glow);
+    }
+
+    .tagline {
+      font-size: 1.3rem;
+      color: var(--muted);
+      margin-bottom: 3rem;
+      font-weight: 300;
+    }
+
+    /* Features grid */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
+      margin: 3rem 0;
+      max-width: 900px;
+    }
+
+    .feature-card {
+      background: var(--glass);
+      backdrop-filter: blur(var(--blur));
+      border-radius: var(--radius);
+      padding: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-10px);
+      box-shadow: var(--glow);
+      border-color: var(--secondary);
+    }
+
+    .feature-icon {
+      font-size: 3rem;
+      color: var(--secondary);
+      margin-bottom: 1rem;
+    }
+
+    .feature-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-desc {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    /* CTA Button */
+    .cta-container {
+      margin-top: 3rem;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem 3rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .cta-btn:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+    }
+
+    .cta-btn span {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Stats section */
+    .stats {
+      display: flex;
+      gap: 3rem;
+      margin-top: 4rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--secondary);
+      display: block;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 5rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .social-links {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .social-links a {
+      color: var(--secondary);
+      font-size: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .social-links a:hover {
+      transform: scale(1.2);
+      filter: drop-shadow(0 0 10px var(--secondary));
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2.5rem;
+      }
+
+      .tagline {
+        font-size: 1.1rem;
+      }
+
+      .features {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .cta-btn {
+        padding: 1.2rem 2rem;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated background -->
+  <div class="bg-animation"></div>
+
+  <!-- Floating particles -->
+  <div class="particles">
+    <div class="particle" style="width: 4px; height: 4px; left: 10%; animation-delay: 0s;"></div>
+    <div class="particle" style="width: 6px; height: 6px; left: 20%; animation-delay: 2s;"></div>
+    <div class="particle" style="width: 3px; height: 3px; left: 30%; animation-delay: 4s;"></div>
+    <div class="particle" style="width: 5px; height: 5px; left: 40%; animation-delay: 1s;"></div>
+    <div class="particle" style="width: 4px; height: 4px; left: 50%; animation-delay: 3s;"></div>
+    <div class="particle" style="width: 6px; height: 6px; left: 60%; animation-delay: 5s;"></div>
+    <div class="particle" style="width: 3px; height: 3px; left: 70%; animation-delay: 2s;"></div>
+    <div class="particle" style="width: 5px; height: 5px; left: 80%; animation-delay: 4s;"></div>
+    <div class="particle" style="width: 4px; height: 4px; left: 90%; animation-delay: 1s;"></div>
+  </div>
+
+  <!-- Main container -->
+  <div class="container">
+    <div class="hero">
+      <!-- Logo -->
+      <div class="logo-container">
+        <img src="https://files.catbox.moe/hoqhfi.jpeg" alt="GIFT MD Logo" class="logo">
+      </div>
+
+      <!-- Title -->
+      <h1>🎁 GIFT MD</h1>
+      <p class="tagline">The Ultimate WhatsApp Bot Experience</p>
+
+      <!-- Features -->
+      <div class="features">
+        <div class="feature-card">
+          <i class="fas fa-bolt feature-icon"></i>
+          <h3 class="feature-title">Lightning Fast</h3>
+          <p class="feature-desc">Instant responses with optimized performance</p>
+        </div>
+
+        <div class="feature-card">
+          <i class="fas fa-shield-alt feature-icon"></i>
+          <h3 class="feature-title">Secure & Safe</h3>
+          <p class="feature-desc">Your data is protected with end-to-end encryption</p>
+        </div>
+
+        <div class="feature-card">
+          <i class="fas fa-magic feature-icon"></i>
+          <h3 class="feature-title">AI Powered</h3>
+          <p class="feature-desc">Smart automation with advanced AI features</p>
+        </div>
+      </div>
+
+      <!-- CTA Button -->
+      <div class="cta-container">
+        <a href="/pair" class="cta-btn">
+          <span>Get Your Session ID</span>
+          <i class="fas fa-arrow-right"></i>
+        </a>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat-item">
+          <span class="stat-number">10K+</span>
+          <span class="stat-label">Active Users</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">50+</span>
+          <span class="stat-label">Commands</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">Support</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="social-links">
+          <a href="https://whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A" target="_blank">
+            <i class="fab fa-whatsapp"></i>
+          </a>
+          <a href="https://github.com/isaacfont461461-cmd/OfficialGift-Md" target="_blank">
+            <i class="fab fa-github"></i>
+          </a>
+          <a href="https://youtube.com/@officialGift-md" target="_blank">
+            <i class="fab fa-youtube"></i>
+          </a>
+        </div>
+        <p style="margin-top: 1.5rem;">© 2025 GIFT MD by Isaac Favour. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
