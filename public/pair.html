@@ -3,20 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trashcore pairing site Dashboard</title>
+  <title>GIFT MD - Pairing Dashboard</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     :root {
-      --primary: linear-gradient(135deg, #FF4500, #228B22);
-      --bg: #D2691E;
+      --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --secondary: #00d4ff;
+      --bg-dark: #0a0e27;
       --glass: rgba(255, 255, 255, 0.05);
       --text: #ffffff;
-      --muted: #708090;
-      --highlight: #FF1493;
-      --radius: 16px;
-      --blur: 12px;
+      --muted: #a0aec0;
+      --highlight: #667eea;
+      --radius: 20px;
+      --blur: 20px;
       --transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      --glow: 0 0 15px rgba(0, 212, 255, 0.3);
+      --glow: 0 0 30px rgba(102, 126, 234, 0.5);
     }
 
     * {
@@ -34,20 +35,53 @@
       position: relative;
       overflow-x: hidden;
       color: var(--text);
-      padding: 80px 20px 120px; /* Space for header and music player */
+      background: var(--bg-dark);
+      padding: 80px 20px 120px;
     }
 
-    /* Background with blur effect */
-    .background-image {
+    /* Animated gradient background - same as landing page */
+    .bg-animation {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      z-index: -3;
-      filter: blur(8px) brightness(0.6);
-      transform: scale(1.1);
+      z-index: -1;
+      background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #4facfe);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+      filter: blur(100px);
+      opacity: 0.3;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Floating particles */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      background: var(--secondary);
+      border-radius: 50%;
+      opacity: 0.2;
+      animation: float 20s infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-100px) rotate(180deg); }
     }
 
     /* Header with logo */
@@ -73,11 +107,11 @@
     }
 
     .logo-img {
-      height: 40px;
-      width: 40px;
+      height: 50px;
+      width: 50px;
       border-radius: 50%;
       object-fit: cover;
-      border: 2px solid rgba(0, 212, 255, 0.3);
+      border: 3px solid var(--secondary);
       box-shadow: var(--glow);
     }
 
@@ -87,7 +121,6 @@
       background: var(--primary);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      text-shadow: var(--glow);
     }
 
     /* Battery indicator */
@@ -103,7 +136,7 @@
     }
 
     .battery-icon {
-      color: var(--highlight);
+      color: var(--secondary);
       font-size: 1.2rem;
     }
 
@@ -123,7 +156,7 @@
       background: var(--glass);
       backdrop-filter: blur(var(--blur));
       border-radius: var(--radius);
-      padding: 2rem;
+      padding: 2.5rem;
       text-align: center;
       box-shadow: 0 10px 35px rgba(0, 0, 0, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -132,22 +165,28 @@
 
     .box:hover {
       transform: translateY(-5px);
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5), var(--glow);
+      box-shadow: var(--glow);
     }
 
     .box h2 {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
       background: var(--primary);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      text-shadow: var(--glow);
+      font-weight: 800;
     }
 
     .box h5 {
       color: var(--muted);
+      margin-bottom: 1rem;
+      font-weight: 400;
+      font-size: 1.1rem;
+    }
+
+    .box p {
+      color: var(--muted);
       margin-bottom: 1.5rem;
-      font-weight: normal;
     }
 
     /* Input styling */
@@ -159,76 +198,80 @@
 
     .input-container input {
       flex: 1;
-      padding: 1rem;
-      border-radius: var(--radius);
+      padding: 1rem 1.5rem;
+      border-radius: 50px;
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: rgba(0, 0, 0, 0.3);
       color: var(--text);
       font-family: inherit;
+      font-size: 1rem;
       transition: var(--transition);
     }
 
     .input-container input:focus {
       outline: none;
-      border-color: var(--highlight);
-      box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+      border-color: var(--secondary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
     }
 
     .input-container button {
-      padding: 1rem 1.5rem;
+      padding: 1rem 2rem;
       background: var(--primary);
       color: white;
       border: none;
-      border-radius: var(--radius);
-      font-weight: 600;
+      border-radius: 50px;
+      font-weight: 700;
       cursor: pointer;
       transition: var(--transition);
+      font-size: 0.95rem;
     }
 
     .input-container button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      box-shadow: var(--glow);
     }
 
     /* Result display */
     #pair-result {
       margin-top: 1.5rem;
-      padding: 1rem;
+      padding: 1.5rem;
       border-radius: var(--radius);
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      min-height: 60px;
+      min-height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
     #copy-code {
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--highlight);
-      padding: 0.6rem 1.2rem;
+      background: rgba(102, 126, 234, 0.2);
+      border: 2px solid var(--secondary);
+      padding: 0.8rem 2rem;
       border-radius: 50px;
       color: white;
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 700;
       transition: var(--transition);
       margin-top: 1rem;
       display: none;
+      font-size: 0.95rem;
     }
 
     #copy-code:hover {
-      background: rgba(0, 212, 255, 0.1);
-      box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+      background: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: var(--glow);
     }
 
-    /* Music player - Positioned below pairing container */
+    /* Music player */
     .music-player {
       width: 100%;
       max-width: 500px;
       background: var(--glass);
       backdrop-filter: blur(var(--blur));
       border-radius: var(--radius);
-      padding: 1.5rem;
+      padding: 2rem;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.1);
       z-index: 90;
@@ -237,40 +280,45 @@
     }
 
     .music-player h3 {
-      color: var(--highlight);
+      color: var(--secondary);
       margin-bottom: 0.5rem;
       font-size: 1.2rem;
+      font-weight: 600;
     }
 
     .music-title {
-      font-weight: bold;
-      font-size: 1.1rem;
+      font-weight: 700;
+      font-size: 1.2rem;
       margin-bottom: 0.3rem;
+      background: var(--primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .music-subtitle {
       color: var(--muted);
       font-size: 0.9rem;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
     }
 
     .play-btn {
       background: var(--primary);
       border: none;
       border-radius: 50%;
-      width: 50px;
-      height: 50px;
+      width: 60px;
+      height: 60px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto;
       cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      box-shadow: var(--glow);
       transition: var(--transition);
     }
 
     .play-btn:hover {
       transform: scale(1.1);
+      box-shadow: 0 0 40px rgba(102, 126, 234, 0.6);
     }
 
     .play-btn i {
@@ -279,9 +327,36 @@
     }
 
     .time-display {
-      margin-top: 1rem;
-      font-size: 0.9rem;
+      margin-top: 1.5rem;
+      font-size: 1rem;
       color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* Back to home button */
+    .back-home {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      background: var(--glass);
+      backdrop-filter: blur(var(--blur));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 0.8rem 1.5rem;
+      border-radius: 50px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition);
+      z-index: 101;
+      font-weight: 600;
+    }
+
+    .back-home:hover {
+      background: var(--primary);
+      transform: translateX(-5px);
+      box-shadow: var(--glow);
     }
 
     /* Responsive design */
@@ -307,20 +382,44 @@
       }
       
       .music-player {
-        padding: 1rem;
+        padding: 1.5rem;
+      }
+
+      .back-home {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Blurred Background Image -->
-  <img src="https://url.bwmxmd.online/Adams.twcferrg.jpg" alt="Trashcore bot Background" class="background-image">
+  <!-- Animated background -->
+  <div class="bg-animation"></div>
+
+  <!-- Floating particles -->
+  <div class="particles">
+    <div class="particle" style="width: 4px; height: 4px; left: 10%; animation-delay: 0s;"></div>
+    <div class="particle" style="width: 6px; height: 6px; left: 20%; animation-delay: 2s;"></div>
+    <div class="particle" style="width: 3px; height: 3px; left: 30%; animation-delay: 4s;"></div>
+    <div class="particle" style="width: 5px; height: 5px; left: 40%; animation-delay: 1s;"></div>
+    <div class="particle" style="width: 4px; height: 4px; left: 50%; animation-delay: 3s;"></div>
+    <div class="particle" style="width: 6px; height: 6px; left: 60%; animation-delay: 5s;"></div>
+    <div class="particle" style="width: 3px; height: 3px; left: 70%; animation-delay: 2s;"></div>
+    <div class="particle" style="width: 5px; height: 5px; left: 80%; animation-delay: 4s;"></div>
+    <div class="particle" style="width: 4px; height: 4px; left: 90%; animation-delay: 1s;"></div>
+  </div>
+
+  <!-- Back to Home Button -->
+  <a href="/" class="back-home">
+    <i class="fas fa-arrow-left"></i>
+    <span>Home</span>
+  </a>
 
   <!-- Header with Logo -->
   <header class="header">
     <div class="logo-container">
-      <img src="https://url.bwmxmd.online/Adams.twcferrg.jpg" alt="Trashcore bot Logo" class="logo-img">
-      <div class="logo-text">𝐓𝐑𝐀𝐒𝐇𝐂𝐎𝐑𝐄-𝐏𝐀𝐈𝐑𝐈𝐍𝐆</div>
+      <img src="https://files.catbox.moe/hoqhfi.jpeg" alt="GIFT MD Logo" class="logo-img">
+      <div class="logo-text">🎁 GIFT MD PAIRING</div>
     </div>
     
     <!-- Battery Indicator -->
@@ -334,32 +433,31 @@
   <div class="main-content">
     <!-- Pairing Box -->
     <div class="box">
-      <h2>PAIRING CODE</h2>
-      <h5>TRASHCORE BOTS </h5>
-      <p>Please enter your number without country code</p>
+      <h2>GET PAIRING CODE</h2>
+      <h5>GIFT MD Bot</h5>
+      <p>Enter your WhatsApp number without country code</p>
       
       <div class="input-container">
-        <input type="number" id="number" placeholder="put your number" required>
-        <button id="submit">REQUEST CODE</button>
+        <input type="number" id="number" placeholder="Enter your number" required>
+        <button id="submit">GET CODE</button>
       </div>
       
       <div id="pair-result">
         <p id="waiting-message" style="display: none;">Please wait...</p>
       </div>
       
-      <button id="copy-code" onclick="copyCode()">COPY YOUR CODE</button>
+      <button id="copy-code" onclick="copyCode()">COPY CODE</button>
     </div>
 
-    <!-- Music Player - Positioned below pairing container -->
+    <!-- Music Player -->
     <div class="music-player">
-      <h3>PLAY NOW</h3>
-      <div class="music-title">PLAY SONG</div>
-      <div class="music-subtitle">by Trashcore devs</div>
+      <h3>🎵 NOW PLAYING</h3>
+      <div class="music-title">GIFT MD Theme</div>
+      <div class="music-subtitle">by Isaac Favour</div>
       <button class="play-btn" onclick="togglePlay()">
         <i class="fas fa-pause" id="play-icon"></i>
       </button>
       <div class="time-display" id="time1">0:00</div>
-      <div class="music-subtitle">PAIRING SONG</div>
       <audio id="audio1" src="https://url.bwmxmd.online/Adams.ioeeyulj.m4a" loop></audio>
     </div>
   </div>
@@ -380,12 +478,12 @@
       const code = pairResult.innerText.replace('CODE: ', '');
       try {
         await navigator.clipboard.writeText(code);
-        copyCodeBtn.innerText = "COPIED!";
-        copyCodeBtn.style.backgroundColor = "#00ff00";
+        copyCodeBtn.innerText = "✓ COPIED!";
+        copyCodeBtn.style.background = "linear-gradient(135deg, #00ff88, #00cc66)";
         copyCodeBtn.style.color = "#000";
         setTimeout(() => {
           copyCodeBtn.innerText = "COPY CODE";
-          copyCodeBtn.style.backgroundColor = "";
+          copyCodeBtn.style.background = "";
           copyCodeBtn.style.color = "";
         }, 2000);
       } catch (err) {
@@ -398,14 +496,14 @@
       e.preventDefault();
       
       if (!numberInput.value) {
-        pairResult.innerHTML = '<p style="color:var(--highlight)">Enter your WhatsApp number without Country Code</p>';
+        pairResult.innerHTML = '<p style="color:#667eea; font-weight:600;">⚠️ Please enter your WhatsApp number</p>';
         return;
       }
       
       const cleanNumber = numberInput.value.replace(/[^0-9]/g, "");
       
-      if (cleanNumber.length < 11) {
-        pairResult.innerHTML = '<p style="color:#ff5555">Invalid Number</p>';
+      if (cleanNumber.length < 10) {
+        pairResult.innerHTML = '<p style="color:#ff5555; font-weight:600;">❌ Invalid Number</p>';
         return;
       }
       
@@ -421,7 +519,7 @@
       
       numberInput.type = "text";
       numberInput.value = "+" + formattedNumber;
-      numberInput.style.color = "var(--highlight)";
+      numberInput.style.color = "#00d4ff";
       
       waitingMessage.style.display = "block";
       pairResult.innerHTML = "";
@@ -432,14 +530,14 @@
         const code = data.code || "Service Unavailable";
         
         pairResult.innerHTML = `
-          <p style="color:var(--highlight); font-weight:bold; font-size:1.2rem;">
-            CODE: <span style="color:white">${code}</span>
+          <p style="font-weight:700; font-size:1.3rem;">
+            <span style="color:#a0aec0;">CODE:</span> <span style="color:#00d4ff;">${code}</span>
           </p>
         `;
         copyCodeBtn.style.display = "inline-block";
         waitingMessage.style.display = "none";
       } catch (error) {
-        pairResult.innerHTML = '<p style="color:#ff5555">Error getting pairing code</p>';
+        pairResult.innerHTML = '<p style="color:#ff5555; font-weight:600;">❌ Error getting pairing code</p>';
         waitingMessage.style.display = "none";
       }
     });
@@ -450,7 +548,7 @@
     const playIcon = document.getElementById('play-icon');
     const timeDisplay = document.getElementById('time1');
     
-    // Auto-play music when page loads (with user interaction)
+    // Auto-play music when page loads
     document.addEventListener('click', function initAudio() {
       audio.play().then(() => {
         playIcon.classList.replace('fa-play', 'fa-pause');
@@ -493,20 +591,18 @@
             const batteryPercent = Math.round(battery.level * 100);
             batteryLevel.textContent = `${batteryPercent}%`;
             
-            // Update battery icon based on level
             let iconClass = 'fa-battery-empty';
             if (batteryPercent > 80) iconClass = 'fa-battery-full';
             else if (batteryPercent > 60) iconClass = 'fa-battery-three-quarters';
             else if (batteryPercent > 40) iconClass = 'fa-battery-half';
             else if (batteryPercent > 20) iconClass = 'fa-battery-quarter';
             
-            // Add charging bolt if charging
             if (battery.charging) {
-              batteryIcon.className = `fas fa-bolt ${iconClass}`;
-              batteryIcon.style.color = '#00ff00';
+              batteryIcon.className = `fas fa-bolt battery-icon`;
+              batteryIcon.style.color = '#00ff88';
             } else {
-              batteryIcon.className = `fas ${iconClass}`;
-              batteryIcon.style.color = 'var(--highlight)';
+              batteryIcon.className = `fas ${iconClass} battery-icon`;
+              batteryIcon.style.color = batteryPercent < 20 ? '#ff5555' : '#00d4ff';
             }
           };
           
@@ -535,4 +631,4 @@
     });
   </script>
 </body>
-  </html>
+</html>
